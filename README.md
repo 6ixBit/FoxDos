@@ -1,4 +1,4 @@
-# FoxDos [Educational purposes only]
+# FoxDos
 HTTP GET Flood attack with an additional ICMP option
 
 ## Run 
