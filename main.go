@@ -69,10 +69,10 @@ func icmpFlood(target string) {
 		os.Exit(1)
 	}
 
-	pinger.Count = 65500 // Packets to send
-	pinger.Run()         // Blocks until complete
+	pinger.Count = 65500 	// Packets to send
+	pinger.Run()         	// Blocks until complete
 
-	wg.Done() 			// Decrement thread counter once complete
+	wg.Done() 				// Decrement thread counter once complete
 	fmt.Println("Ping Complete.")
 }
 
