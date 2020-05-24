@@ -1,5 +1,5 @@
 # FoxDos
-Denial of service attack leveraging go routines
+HTTP GET Flood attack with an additional ICMP option
 
 ## Run 
   - go run main.go www.mysite.com 100
