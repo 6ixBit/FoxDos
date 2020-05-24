@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/sparrc/go-ping"
-	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -32,17 +31,18 @@ func main() {
 
 func parseArgs() (target string, numbOfThreads int) {
 	if len(os.Args) != 3 {
-		fmt.Println("Error: Ensure you pass two arguments. Host/IP and the number of threads to spawn.")
+		fmt.Println("Error: Wrong arguements passed")
+		fmt.Println()
+		fmt.Println(`Usage: <host> <threads>`)
+		
+		fmt.Println(`Example: www.mysite.com 100`)
+		fmt.Println()
+
 		os.Exit(1)
 	}
 
 	target = os.Args[1]
 	numbOfThreads, _ = strconv.Atoi(os.Args[2])
-
-	if (isHostValid(target)) == false {
-		fmt.Println(" Error: The host you entered is invalid.")
-		os.Exit(1)
-	}
 
 	if (areNumberOfThreadsValid(numbOfThreads)) == false {
 		fmt.Println("Error: The number of threads you enter exceeds the limit; ", threadLimit)
