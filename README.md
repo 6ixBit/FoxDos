@@ -1,5 +1,5 @@
-# FoxDos [Research purposes only]
-HTTP GET Flood attack with an additional ICMP option
+# FoxDos 
+HTTP GET Flood attack with an additional ICMP option. [Research purposes only]
 
 ## Run - <method> <host> <threads>
   Examples:
