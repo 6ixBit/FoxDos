@@ -1,7 +1,9 @@
 # FoxDos 
 HTTP(s) attacks using tcp. [Research purposes only]
 
-## Run - go run main.go <threads> <target> <port>
+## Run 
+  Usage: go run main.go  <threads> <target> <port>
+  
   Examples:
  - go run main.go 400 www.mysite.com 80
  - go run main.go 400 www.example.com 443
