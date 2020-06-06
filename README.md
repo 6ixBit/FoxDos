@@ -14,4 +14,6 @@ HTTP(s) attacks using tcp. [Research purposes only]
 You could also build the executable to binary for cross platform execution by running the commands below.
  - [Windows]: GOOS=windows go build 
  - [Linux]: GOARCH=386 go build
+ 
+ Once the executable has been generated in the root of the application you can run it as an .exe on Windows or run the binary directly by using ./FoxDos on Linux.
 
